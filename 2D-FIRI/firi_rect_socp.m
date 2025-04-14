@@ -5,7 +5,7 @@ function FIRI_Complete
     
     %% Environment Setup
     env_size = [50, 50];          % Environment dimensions [m]
-    num_obstacles = 20;           % Number of obstacles
+    num_obstacles = 30;           % Number of obstacles
     min_spacing = 0.8;            % Minimum obstacle spacing
     min_clearance = 2.0;          % Clearance from seed
     bounding_box_size = 6;        % Bounding box half-size
@@ -46,32 +46,47 @@ function FIRI_Complete
     % Plot bounding box
     rectangle('Position', [bounding_square(1,1), bounding_square(1,2),...
         2*bounding_box_size, 2*bounding_box_size],...
-        'EdgeColor', [0.2 0.2 1], 'LineStyle', '--', 'LineWidth', 1.5);
+        'EdgeColor', [0.2 0.2 1], 'LineStyle', '--', 'LineWidth', 1.5,...
+        'HandleVisibility', 'off');
     
     % Plot obstacles
     for i = 1:numel(convex_obstacles)
         obs = convex_obstacles{i};
         if size(unique(obs, 'rows'), 1) >= 3
             k = convhull(obs(:,1), obs(:,2));
-            fill(obs(k,1), obs(k,2), [0.5 0.5 0.5], 'FaceAlpha', 0.5, 'EdgeColor', 'k');
+            fill(obs(k,1), obs(k,2), [0.5 0.5 0.5], 'FaceAlpha', 0.5,...
+                'EdgeColor', 'k', 'HandleVisibility', 'off');
         end
     end
     
     % Plot seed elements
-    fill(P_seed(:,1), P_seed(:,2), 'w', 'EdgeColor', 'g', 'LineWidth', 2, 'FaceAlpha', 0);
-    draw_ellipse(E0.L, E0.d, 'r');  % Initial ellipsoid
+    h_seed = plot(P_seed([1:end 1],1), P_seed([1:end 1],2), 'g-', 'LineWidth', 2);
+    
+    % Draw initial ellipsoid (red)
+    h_initial = draw_ellipse(E0.L, E0.d, 'r');
     
     % Plot final results
+    h_final_poly = gobjects(1); % Initialize graphics object
     if ~isempty(Pk)
         vertices = hrep2vrep(Pk.A', Pk.b);
         if ~isempty(vertices)
             k = convhull(vertices(:,1), vertices(:,2));
-            plot(vertices(k,1), vertices(k,2), 'm-', 'LineWidth', 2);
+            h_final_poly = plot(vertices(k,1), vertices(k,2), 'm-',...
+                'LineWidth', 2, 'DisplayName', 'Final Polytope');
         end
     end
-    draw_ellipse(E_final.L, E_final.d, 'b');  % Final ellipsoid
     
-    legend({'Seed Polytope','ε₀','ε_{final}'}, 'Location', 'northeast');
+    % Draw final ellipsoid (blue)
+    h_final_ellipse = draw_ellipse(E_final.L, E_final.d, 'b');
+    
+    % Create legend (handle empty graphics objects gracefully)
+    valid_handles = [h_seed, h_initial, h_final_ellipse];
+    if ~isempty(h_final_poly)
+        valid_handles = [valid_handles, h_final_poly];
+    end
+    
+    legend(valid_handles, {'Seed Polytope','ε₀','ε_{final}', 'Final Polytope'},...
+        'Location', 'northeast');
     hold off;
 end
 
@@ -276,9 +291,9 @@ function [a, bi] = TangentPlane(seed, x_star)
     bi = a'*x_star + epsilon;
 end
 
-function draw_ellipse(L, d, color)
+function h = draw_ellipse(L, d, color)
     theta = linspace(0, 2*pi, 100);
     circle = [cos(theta); sin(theta)];
     ellipse = L * circle + d;
-    plot(ellipse(1,:), ellipse(2,:), '-', 'Color', color, 'LineWidth', 2);
+    h = plot(ellipse(1,:), ellipse(2,:), '-', 'Color', color, 'LineWidth', 2);
 end
